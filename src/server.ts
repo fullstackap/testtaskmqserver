@@ -1,9 +1,9 @@
 import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
-import db from "./serverback/models/index";
-import temperatureRouter from "./serverback/routes/temperature.routes";
-import precipitationRouter from "./serverback/routes/precipitation.routes";
+import db from "./app/models/index";
+import temperatureRouter from "./app/routes/temperature.routes";
+import precipitationRouter from "./app/routes/precipitation.routes";
 import dotenv from "dotenv";
 
 dotenv.config();
