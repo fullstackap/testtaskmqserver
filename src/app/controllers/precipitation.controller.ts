@@ -1,78 +1,58 @@
 import { Request, Response } from 'express';
+import fs from "fs";
+import path, { dirname } from "path";
 import db from "../models";
+
+const LIMIT_RECORDS = 50;
 
 const Precipitation = db.precipitations;
 
 class PrecipitationController {
     // Get all Precipitations from the database.
     getAll(req: Request, res: Response) {
-        const fromDate: any = req.query.fromDate;
-        const toDate: any = req.query.toDate;
-        const fromPrecipitation: any = req.query.fromPrecipitation;
-        const toPrecipitation: any = req.query.toPrecipitation;
+        const offset: any = req.query.offset;
+        const limit: any = req.query.limit;
 
-        // const dateQuery = {};
-        // if (fromDate && !toDate) {
-        //     dateQuery = { t: { $gte: new Date(fromDate) } };
-        // } else if (!t && toDate) {
-        //     dateQuery = { toDate: { $lte: new Date(toDate) } };
-        // } else if (t && toDate) {
-        //     dateQuery = { t: { $gte: new Date(fromDate), $lte: new Date(toDate) } };
-        // }
+        const finalOffset = offset >= 0 ? offset : 0;
+        const finalLimit = limit > 0 ? limit : LIMIT_RECORDS;
 
-        // const temperatureQuery = {};
-        // if (fromPrecipitation && !toPrecipitation) {
-        //     temperatureQuery = { v: { $gte: fromPrecipitation } };
-        // } else if (!t && toPrecipitation) {
-        //     temperatureQuery = { toPrecipitation: { $lte: toPrecipitation } };
-        // } else if (t && toPrecipitation {
-        //     temperatureQuery = { v: { $gte: fromPrecipitation, $lte: toPrecipitation } };
-        // }
-
-        const query = {
-            $and:
-                [
-                    {
-                        $or:
-                            [
-                                { t: { $not: fromDate } },
-                                { t: new Date(fromDate) }
-                            ]
-                    },
-                    {
-                        $or:
-                            [
-                                { t: { $not: toDate } },
-                                { t: new Date(toDate) }
-                            ]
-                    },
-                    {
-                        $or:
-                            [
-                                { v: { $not: fromPrecipitation } },
-                                { v: new fromPrecipitation }
-                            ]
-                    },
-                    {
-                        $or:
-                            [
-                                { v: { $not: toPrecipitation } },
-                                { v: new toPrecipitation }
-                            ]
-                    }
-                ]
-        };
-
-        Precipitation.find(query)
-            .then((data: any) => {
-                res.send(data);
-            })
-            .catch((err: any) => {
+        Precipitation.count({}, (err, count) => {
+            if (err) {
                 res.status(500).send({
                     message:
-                        err.message || "Some error occurred while retrieving Precipitations."
+                        err.message || "Some error occurred while counting Precipitations."
                 });
-            });
+
+                return;
+            }
+
+            if (count == 0) {
+                res.send({
+                    items: [],
+                    offset: finalOffset,
+                    limit: finalLimit,
+                    count,
+                });
+                
+                return;
+            }
+
+            Precipitation.find().skip(finalOffset).limit(finalLimit)
+                .then((data: any) => {
+                    res.send({
+                        items: data,
+                        offset: finalOffset,
+                        limit: finalLimit,
+                        count,
+                    });
+                })
+                .catch((err: any) => {
+                    res.status(500).send({
+                        message:
+                            err.message || "Some error occurred while retrieving Precipitations."
+                    });
+                });
+        });
     };
 
     // Get a single Precipitation with an id

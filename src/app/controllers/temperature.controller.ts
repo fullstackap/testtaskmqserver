@@ -1,78 +1,58 @@
 import { Request, Response } from 'express';
+import fs from "fs";
+import path, { dirname } from "path";
 import db from "../models";
+
+const LIMIT_RECORDS = 50;
 
 const Temperature = db.temperatures;
 
 class TemperatureController {
     // Get all Temperatures from the database.
     getAll(req: Request, res: Response) {
-        const fromDate: any = req.query.fromDate;
-        const toDate: any = req.query.toDate;
-        const fromTemperature: any = req.query.fromTemperature;
-        const toTemperature: any = req.query.toTemperature;
+        const offset: any = req.query.offset;
+        const limit: any = req.query.limit;
 
-        // const dateQuery = {};
-        // if (fromDate && !toDate) {
-        //     dateQuery = { t: { $gte: new Date(fromDate) } };
-        // } else if (!t && toDate) {
-        //     dateQuery = { toDate: { $lte: new Date(toDate) } };
-        // } else if (t && toDate) {
-        //     dateQuery = { t: { $gte: new Date(fromDate), $lte: new Date(toDate) } };
-        // }
+        const finalOffset = offset >= 0 ? offset : 0;
+        const finalLimit = limit > 0 ? limit : LIMIT_RECORDS;
 
-        // const temperatureQuery = {};
-        // if (fromTemperature && !toTemperature) {
-        //     temperatureQuery = { v: { $gte: fromTemperature } };
-        // } else if (!t && toTemperature) {
-        //     temperatureQuery = { toTemperature: { $lte: toTemperature } };
-        // } else if (t && toTemperature {
-        //     temperatureQuery = { v: { $gte: fromTemperature, $lte: toTemperature } };
-        // }
-
-        const query = {
-            $and:
-                [
-                    {
-                        $or:
-                            [
-                                { t: { $not: fromDate } },
-                                { t: new Date(fromDate) }
-                            ]
-                    },
-                    {
-                        $or:
-                            [
-                                { t: { $not: toDate } },
-                                { t: new Date(toDate) }
-                            ]
-                    },
-                    {
-                        $or:
-                            [
-                                { v: { $not: fromTemperature } },
-                                { v: new fromTemperature }
-                            ]
-                    },
-                    {
-                        $or:
-                            [
-                                { v: { $not: toTemperature } },
-                                { v: new toTemperature }
-                            ]
-                    }
-                ]
-        };
-
-        Temperature.find(query)
-            .then((data: any) => {
-                res.send(data);
-            })
-            .catch((err: any) => {
+        Temperature.count({}, (err, count) => {
+            if (err) {
                 res.status(500).send({
                     message:
-                        err.message || "Some error occurred while retrieving Temperatures."
+                        err.message || "Some error occurred while counting Temperatures."
                 });
-            });
+
+                return;
+            }
+
+            if (count == 0) {
+                res.send({
+                    items: [],
+                    offset: finalOffset,
+                    limit: finalLimit,
+                    count,
+                });
+                
+                return;
+            }
+
+            Temperature.find().skip(finalOffset).limit(finalLimit)
+                .then((data: any) => {
+                    res.send({
+                        items: data,
+                        offset: finalOffset,
+                        limit: finalLimit,
+                        count,
+                    });
+                })
+                .catch((err: any) => {
+                    res.status(500).send({
+                        message:
+                            err.message || "Some error occurred while retrieving Temperatures."
+                    });
+                });
+        });
     };
 
     // Get a single Temperature with an id
